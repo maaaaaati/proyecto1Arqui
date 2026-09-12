@@ -125,3 +125,8 @@ compute_stats:
 normalize_array:
     ; TODO: implementar
     ret
+
+; Declara explicitamente que este objeto NO requiere pila ejecutable.
+; NASM no emite esta seccion por defecto (GCC si), y sin ella el
+; enlazador desactiva la proteccion NX del ejecutable completo.
+section .note.GNU-stack noalloc noexec nowrite progbits

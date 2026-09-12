@@ -1,0 +1,9 @@
+# Artefactos de compilación
+obj/
+bin/
+*.o
+
+# Datos de prueba (se regeneran con tools/gen_input.py)
+data/
+*.dat
+*.stats.txt
