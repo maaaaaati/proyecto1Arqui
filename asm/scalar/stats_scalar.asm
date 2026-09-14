@@ -61,36 +61,74 @@ sum_array:
 ;      puntero: [rdx]=mean, [rcx]=var, [r8]=min, [r9]=max.
 ;   5) No olvide restaurar los registros callee-saved en el epilogo.
 ; ---------------------------------------------------------------
+; ---------------------------------------------------------------
+; void compute_stats(const float *arr, int n,
+;                     float *mean, float *var, float *min, float *max)
+;   rdi = arr, esi = n, rdx = mean*, rcx = var*, r8 = min*, r9 = max*
+; ---------------------------------------------------------------
+; ---------------------------------------------------------------
+; void compute_stats(const float *arr, int n,
+;                     float *mean, float *var, float *min, float *max)
+;   rdi = arr, esi = n, rdx = mean*, rcx = var*, r8 = min*, r9 = max*
+; ---------------------------------------------------------------
 compute_stats:
     push    rbx
     push    r12
     push    r13
     push    r14
     push    r15
+    push    r8              ; min*  -> queda en [rsp+8] tras el siguiente push
+    push    r9              ; max*  -> queda en [rsp]
 
-    ; n == 0 -> write 0.0 to all outputs
     test    esi, esi
     jz      .zero_case
 
-    ; Save original arguments because call sum_array will clobber caller-saved regs
-    mov     r12, rdi
-    mov     r13, rsi
-    mov     r14, rdx
-    mov     r15, rcx
-    mov     rbx, r8
-    mov     r11, r9
+    mov     r12, rdi         ; r12 = arr
+    mov     r13, rsi         ; r13 = n
+    mov     r14, rdx         ; r14 = mean*
+    mov     r15, rcx         ; r15 = var*
 
-    ; mean = sum_array(arr, n) / n
+    ; --- mean = sum_array(arr, n) / n ---
     mov     rdi, r12
     mov     esi, r13d
-    call    sum_array
+    call    sum_array        ; xmm0 = total
 
-    ; xmm0 = total
-    cvtsi2ss xmm1, r13d      ; xmm1 = n as float
-    divss    xmm0, xmm1       ; xmm0 = total / n
-    movss    [r14], xmm0      ; mean = xmm0
+    cvtsi2ss xmm1, r13d
+    divss    xmm0, xmm1      ; xmm0 = mean
+    movss    [r14], xmm0     ; *mean = xmm0
 
-    ; continue later with variance + min/max
+    ; --- var, min, max en un solo recorrido ---
+    xorps   xmm2, xmm2        ; sum_sq = 0.0
+    movss   xmm4, [r12]       ; xmm4 = min, semilla con arr[0]
+    movss   xmm5, [r12]       ; xmm5 = max, semilla con arr[0]
+    xor     eax, eax          ; i = 0
+.var_loop:
+    cmp     eax, r13d
+    jge     .var_done
+
+    movss   xmm3, [r12 + rax*4]   ; xmm3 = arr[i]
+
+    movss   xmm6, xmm3
+    subss   xmm6, xmm0            ; xmm6 = arr[i] - mean
+    mulss   xmm6, xmm6            ; xmm6 = (arr[i]-mean)^2
+    addss   xmm2, xmm6            ; sum_sq += xmm6
+
+    minss   xmm4, xmm3            ; min = min(min, arr[i])
+    maxss   xmm5, xmm3            ; max = max(max, arr[i])
+
+    inc     eax
+    jmp     .var_loop
+
+.var_done:
+    cvtsi2ss xmm1, r13d
+    divss    xmm2, xmm1
+    movss    [r15], xmm2          ; *var = xmm2
+
+    mov     rax, [rsp]            ; recuperar max* del tope de la pila
+    mov     rcx, [rsp + 8]        ; recuperar min*
+    movss   [rcx], xmm4           ; *min = xmm4
+    movss   [rax], xmm5           ; *max = xmm5
+
     jmp     .done
 
 .zero_case:
@@ -101,6 +139,8 @@ compute_stats:
     movss   [r9], xmm0
 
 .done:
+    pop     r9
+    pop     r8
     pop     r15
     pop     r14
     pop     r13
@@ -122,11 +162,43 @@ compute_stats:
 ; System V no se usan para pasar argumentos), o vuelva a cargarlos
 ; en cada iteracion desde una copia guardada en la pila.
 ; ---------------------------------------------------------------
+; ---------------------------------------------------------------
+; void normalize_array(const float *in, float *out, int n,
+;                       float mean, float stddev)
+;   rdi = in, rsi = out, edx = n, xmm0 = mean, xmm1 = stddev
+; ---------------------------------------------------------------
 normalize_array:
-    ; TODO: implementar
-    ret
+    movss   xmm8, xmm0        ; mean guardado en xmm8 (no lo pisa el loop)
+    movss   xmm9, xmm1        ; stddev guardado en xmm9
 
-; Declara explicitamente que este objeto NO requiere pila ejecutable.
-; NASM no emite esta seccion por defecto (GCC si), y sin ella el
-; enlazador desactiva la proteccion NX del ejecutable completo.
-section .note.GNU-stack noalloc noexec nowrite progbits
+    xorps   xmm10, xmm10
+    ucomiss xmm9, xmm10        ; comparar stddev contra 0.0
+    je      .copy_loop         ; si stddev == 0.0, salto al camino "copiar tal cual"
+
+    xor     eax, eax           ; i = 0
+.norm_loop:
+    cmp     eax, edx
+    jge     .norm_done
+
+    movss   xmm2, [rdi + rax*4]  ; xmm2 = in[i]
+    subss   xmm2, xmm8            ; xmm2 = in[i] - mean
+    divss   xmm2, xmm9            ; xmm2 = (in[i]-mean) / stddev
+    movss   [rsi + rax*4], xmm2   ; out[i] = xmm2
+
+    inc     eax
+    jmp     .norm_loop
+
+.copy_loop:
+    xor     eax, eax
+.copy_loop_body:
+    cmp     eax, edx
+    jge     .norm_done
+
+    movss   xmm2, [rdi + rax*4]
+    movss   [rsi + rax*4], xmm2   ; out[i] = in[i], sin normalizar
+
+    inc     eax
+    jmp     .copy_loop_body
+
+.norm_done:
+    ret
