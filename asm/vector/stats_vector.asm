@@ -68,42 +68,120 @@ sum_array:
 ;                     float *mean, float *var, float *min, float *max)
 ;   rdi = arr, esi = n, rdx = mean*, rcx = var*, r8 = min*, r9 = max*
 ;
-; TODO (estudiante):
-;   1) mean = suma(arr) / n (puede llamar a sum_array; recuerde
-;      guardar arr/n/mean*/var*/min*/max* en registros callee-saved
-;      antes, porque la llamada destruye registros caller-saved).
-;   2) Segunda pasada VECTORIZADA para acumular sum((x-mean)^2):
-;        - "broadcast" de mean a los 8 carriles con vbroadcastss.
-;        - vsubps + vmulps (o vfmadd231ps si quieren ir mas alla)
-;          para acumular los cuadrados de las diferencias,
-;        - misma reduccion horizontal que en sum_array,
-;        - bucle escalar para el remanente (subss/mulss/addss).
-;   3) Min/max VECTORIZADOS con vminps/vmaxps a lo largo del bucle
-;      principal, reduccion final con vextractf128 + vminps/vmaxps
-;      (y shuffles si quieren reducir los 4 restantes a 1), mas
-;      bucle escalar de cierre con minss/maxss o comiss.
-;   4) Guarde los resultados en [rdx]=mean, [rcx]=var, [r8]=min,
-;      [r9]=max. Si n == 0, escriba 0.0 en los cuatro.
-;   5) 'vzeroupper' antes de cualquier 'ret' en una funcion que usa
-;      registros YMM.
+;   var = varianza POBLACIONAL = sum((x - mean)^2) / n
+;   n <= 0 -> escribe 0.0 en mean/var/min/max.
+;
+; Registros callee-saved durante el cuerpo:
+;   r12 = arr   r13 = n   r14 = mean*   r15 = var*   rbx = min*
+;   [rsp] = max*   (6 valores, solo 5 callee-saved -> uno va a la pila)
+;
+; Pasada 2 (vectorial, 8 carriles):
+;   ymm2 = acumulador de (x-mean)^2      ymm3 = mean en los 8 carriles
+;   ymm4 = min parcial por carril        ymm5 = max parcial por carril
+;   ymm6 = 8 floats cargados             ymm7 = temporal (x-mean)^2
+;   xmm1 = (float)n     (no se toca en el bucle)
 ; ---------------------------------------------------------------
 compute_stats:
     push    rbx
     push    r12
     push    r13
     push    r14
-    push    r15
+    push    r15                    ; 5 pushes: rsp queda alineado a 16
 
-    ; TODO: implementar el algoritmo descrito arriba.
+    test    esi, esi
+    jle     .cs_zero               ; n <= 0 -> caso borde
 
-    ; --- placeholder temporal: elimine estas lineas al implementar ---
+    sub     rsp, 16                ; espacio para max* (y mantiene rsp alineado a 16)
+    mov     [rsp], r9              ; [rsp] = max*
+    mov     rbx, r8                ; rbx = min*
+    mov     r12, rdi               ; r12 = arr
+    mov     r13d, esi              ; r13 = n
+    mov     r14, rdx               ; r14 = mean*
+    mov     r15, rcx               ; r15 = var*
+
+    ; --- mean = sum_array(arr, n) / n ---
+    mov     rdi, r12
+    mov     esi, r13d
+    call    sum_array              ; xmm0 = suma total
+    vxorps  xmm1, xmm1, xmm1
+    vcvtsi2ss xmm1, xmm1, r13d     ; xmm1 = (float)n
+    vdivss  xmm0, xmm0, xmm1       ; xmm0 = mean
+    vmovss  [r14], xmm0            ; *mean = mean
+
+    ; --- inicializacion de la pasada 2 ---
+    vbroadcastss ymm3, xmm0        ; ymm3 = [mean x8]
+    vxorps  ymm2, ymm2, ymm2       ; sum_sq parcial = 0 en los 8 carriles
+    vbroadcastss ymm4, [r12]       ; min = arr[0] en los 8 carriles (n >= 1 aqui)
+    vmovaps ymm5, ymm4             ; max = arr[0] en los 8 carriles
+    xor     eax, eax               ; i = 0
+    mov     ecx, r13d
+    and     ecx, ~7                ; ecx = n redondeado hacia abajo a multiplo de 8
+
+.cs_vec_loop:
+    cmp     eax, ecx
+    jge     .cs_reduce
+    vmovaps ymm6, [r12 + rax*4]    ; 8 floats (arr alineado a 32 -> vmovaps valido)
+    vsubps  ymm7, ymm6, ymm3       ; x - mean
+    vmulps  ymm7, ymm7, ymm7       ; (x - mean)^2
+    vaddps  ymm2, ymm2, ymm7       ; sum_sq += por carril
+    vminps  ymm4, ymm4, ymm6       ; min por carril
+    vmaxps  ymm5, ymm5, ymm6       ; max por carril
+    add     eax, 8
+    jmp     .cs_vec_loop
+
+.cs_reduce:
+    ; --- reduccion horizontal de sum_sq (igual que sum_array) ---
+    vextractf128 xmm8, ymm2, 1     ; xmm8 = carriles 4-7
+    vaddps  xmm2, xmm2, xmm8       ; 4 sumas parciales
+    vhaddps xmm2, xmm2, xmm2
+    vhaddps xmm2, xmm2, xmm2       ; xmm2[0] = sum_sq
+
+    ; --- reduccion horizontal de min: 8 -> 4 -> 2 -> 1 ---
+    vextractf128 xmm8, ymm4, 1
+    vminps  xmm4, xmm4, xmm8       ; 4 minimos parciales
+    vpermilps xmm8, xmm4, 0x0E     ; xmm8[0..1] = xmm4[2..3]
+    vminps  xmm4, xmm4, xmm8       ; 2 minimos parciales (carriles 0-1)
+    vpermilps xmm8, xmm4, 0x01     ; xmm8[0] = xmm4[1]
+    vminps  xmm4, xmm4, xmm8       ; xmm4[0] = min de los 8 carriles
+
+    ; --- reduccion horizontal de max (mismo esquema) ---
+    vextractf128 xmm8, ymm5, 1
+    vmaxps  xmm5, xmm5, xmm8
+    vpermilps xmm8, xmm5, 0x0E
+    vmaxps  xmm5, xmm5, xmm8
+    vpermilps xmm8, xmm5, 0x01
+    vmaxps  xmm5, xmm5, xmm8       ; xmm5[0] = max de los 8 carriles
+
+.cs_tail:
+    ; --- remanente (n % 8), un elemento por iteracion ---
+    cmp     eax, r13d
+    jge     .cs_finish
+    vmovss  xmm6, [r12 + rax*4]    ; x
+    vsubss  xmm7, xmm6, xmm3       ; x - mean (xmm3[0] = mean)
+    vmulss  xmm7, xmm7, xmm7
+    vaddss  xmm2, xmm2, xmm7       ; sum_sq += (x-mean)^2
+    vminss  xmm4, xmm4, xmm6
+    vmaxss  xmm5, xmm5, xmm6
+    inc     eax
+    jmp     .cs_tail
+
+.cs_finish:
+    vdivss  xmm2, xmm2, xmm1       ; var = sum_sq / n
+    vmovss  [r15], xmm2            ; *var
+    vmovss  [rbx], xmm4            ; *min
+    mov     rax, [rsp]             ; rax = max*
+    vmovss  [rax], xmm5            ; *max
+    add     rsp, 16
+    jmp     .cs_done
+
+.cs_zero:
     vxorps  xmm0, xmm0, xmm0
     vmovss  [rdx], xmm0
     vmovss  [rcx], xmm0
     vmovss  [r8], xmm0
     vmovss  [r9], xmm0
-    ; --- fin placeholder ---
 
+.cs_done:
     pop     r15
     pop     r14
     pop     r13
@@ -118,21 +196,49 @@ compute_stats:
 ;   rdi = in, rsi = out, edx = n, xmm0 = mean, xmm1 = stddev
 ;
 ;   out[i] = (in[i] - mean) / stddev
-;   Caso borde: si stddev == 0.0, copie in[i] en out[i] tal cual.
+;   Caso borde stddev == 0.0: out[i] = in[i]. Se logra sin un segundo
+;   bucle usando mean = 0.0 y stddev = 1.0, porque (x - 0) / 1 == x
+;   exactamente en IEEE-754.
 ;
-; TODO (estudiante):
-;   - "Broadcast" mean y stddev a registros YMM con vbroadcastss
-;     (guarde antes xmm0/xmm1 en otros registros o en la pila, ya
-;     que planea usar xmm0/xmm1 tambien como temporales del bucle).
-;   - Bucle vectorial de 8 en 8: vmovups/vmovaps carga, vsubps,
-;     vdivps (o vmulps por el reciproco de stddev si quieren
-;     optimizar), vmovups/vmovaps guarda.
-;   - Bucle escalar de cierre para el remanente (n % 8), igual que
-;     en sum_array.
-;   - 'vzeroupper' antes del 'ret'.
+;   ymm8 = mean x8   ymm9 = stddev x8   ymm2 = temporal
 ; ---------------------------------------------------------------
 normalize_array:
-    ; TODO: implementar
+    vxorps  xmm2, xmm2, xmm2
+    vucomiss xmm1, xmm2            ; stddev vs 0.0
+    jne     .norm_setup            ; stddev != 0 -> usar mean/stddev recibidos
+    vxorps  xmm0, xmm0, xmm0       ; mean   = 0.0
+    mov     eax, 0x3F800000        ; 1.0f en IEEE-754
+    vmovd   xmm1, eax              ; stddev = 1.0
+
+.norm_setup:
+    vbroadcastss ymm8, xmm0        ; ymm8 = [mean x8]
+    vbroadcastss ymm9, xmm1        ; ymm9 = [stddev x8]
+    xor     eax, eax               ; i = 0
+    mov     ecx, edx
+    and     ecx, ~7                ; ecx = n redondeado hacia abajo a multiplo de 8
+
+.norm_vec_loop:
+    cmp     eax, ecx
+    jge     .norm_tail
+    vmovaps ymm2, [rdi + rax*4]    ; 8 floats de entrada
+    vsubps  ymm2, ymm2, ymm8       ; x - mean
+    vdivps  ymm2, ymm2, ymm9       ; (x - mean) / stddev
+    vmovaps [rsi + rax*4], ymm2    ; 8 floats de salida
+    add     eax, 8
+    jmp     .norm_vec_loop
+
+.norm_tail:
+    cmp     eax, edx
+    jge     .norm_done
+    vmovss  xmm2, [rdi + rax*4]
+    vsubss  xmm2, xmm2, xmm8       ; xmm8[0] = mean
+    vdivss  xmm2, xmm2, xmm9       ; xmm9[0] = stddev
+    vmovss  [rsi + rax*4], xmm2
+    inc     eax
+    jmp     .norm_tail
+
+.norm_done:
+    vzeroupper
     ret
 
 ; Declara explicitamente que este objeto NO requiere pila ejecutable.

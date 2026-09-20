@@ -116,3 +116,18 @@ gdb --args ./bin/norm_vector data/input_small.dat data/out.dat 1
 depende de la version de GDB instalada: pruebe `info registers ymm0`,
 `print $ymm0.v8_float`, o `p/x $ymm0` segun lo que este disponible en
 su laboratorio.)
+
+
+## Para correr el programa
+
+mkdir -p build
+nasm -f elf64 -g -F dwarf asm/scalar/stats_scalar.asm -o build/stats_scalar.o
+nasm -f elf64 -g -F dwarf asm/vector/stats_vector.asm -o build/stats_vector.o
+gcc -O2 -g -Iinclude src/driver.c build/stats_scalar.o -o build/prog_scalar -lm
+gcc -O2 -g -Iinclude src/driver.c build/stats_vector.o -o build/prog_vector -lm
+
+python3 tools/gen_input.py 1000 input.dat random 42
+./build/prog_scalar input.dat output_scalar.dat 30
+./build/prog_vector input.dat output_vector.dat 30
+python3 tools/verify_reference.py input.dat output_scalar.dat.stats.txt
+python3 tools/verify_reference.py input.dat output_vector.dat.stats.txt
