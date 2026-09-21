@@ -202,3 +202,6 @@ normalize_array:
 
 .norm_done:
     ret
+
+; Declara explicitamente que este objeto NO requiere pila ejecutable.
+section .note.GNU-stack noalloc noexec nowrite progbits
