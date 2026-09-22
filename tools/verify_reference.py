@@ -1,22 +1,31 @@
 #!/usr/bin/env python3
 """
-Calcula estadisticos de referencia (en Python puro, sin SIMD) para un
-archivo input.dat y los compara contra el resumen que el driver en C
-escribe en '<output>.stats.txt'.
+Calcula estadisticos de referencia con NumPy para un archivo input.dat y
+los compara contra el resumen que el driver en C escribe en
+'<output>.stats.txt'.
 
 Uso:
     python3 verify_reference.py <input.dat> <output.stats.txt> [tolerancia]
+
+La referencia se calcula en float64 (doble precision), no en float32,
+para que sirva como patron independiente contra el cual medir el error
+de acumulacion de las dos implementaciones en ensamblador. NumPy usa
+ademas suma por pares (pairwise summation), cuyo error crece como
+O(log n) en lugar de O(n), asi que la referencia sigue siendo confiable
+en los tamanos grandes que exige el enunciado.
 """
-import struct
 import sys
-import math
+
+import numpy as np
 
 
 def read_input(path):
     with open(path, "rb") as f:
-        n = struct.unpack("<i", f.read(4))[0]
-        values = list(struct.unpack(f"<{n}f", f.read(4 * n))) if n > 0 else []
-    return n, values
+        n = int(np.frombuffer(f.read(4), dtype="<i4")[0])
+        if n <= 0:
+            return n, np.array([], dtype=np.float64)
+        v = np.frombuffer(f.read(4 * n), dtype="<f4")
+    return n, v.astype(np.float64)
 
 
 def read_summary(path):
@@ -27,7 +36,10 @@ def read_summary(path):
             if not line or "=" not in line:
                 continue
             key, val = line.split("=", 1)
-            result[key] = float(val)
+            try:
+                result[key] = float(val)
+            except ValueError:
+                pass
     return result
 
 
@@ -35,11 +47,11 @@ def reference_stats(values):
     n = len(values)
     if n == 0:
         return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-    total = sum(values)
+    total = float(np.sum(values))
     mean = total / n
-    var = sum((x - mean) ** 2 for x in values) / n
-    stddev = math.sqrt(var)
-    return total, mean, var, stddev, min(values), max(values)
+    var = float(np.mean((values - mean) ** 2))   # varianza POBLACIONAL
+    stddev = float(np.sqrt(var))
+    return total, mean, var, stddev, float(np.min(values)), float(np.max(values))
 
 
 def rel_error(a, b):
