@@ -254,8 +254,7 @@ perf stat -e cycles,instructions,cache-misses,cache-references \
 
 ## Estado y tareas pendientes en los kernels
 
-Los 11 casos borde pasan en ambas versiones y entre sí. Detalle completo
-en `tareas_para_mati.md`; las dos prioritarias:
+Los 11 casos borde pasan en ambas versiones y entre sí. Las dos tareas prioritarias:
 
 **1. Acumuladores parciales en el `.var_loop` escalar.** Con N = 10⁶ el
 escalar da 3.55×10⁻⁴ de error relativo en `var` (falla la tolerancia de
