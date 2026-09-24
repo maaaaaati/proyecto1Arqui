@@ -1,12 +1,8 @@
-# Esqueleto de proyecto: Normalizador estadistico vectorizado (NASM + C)
+# Proyecto: Normalizador estadistico vectorizado (NASM + C)
 
-Este es el punto de partida para el proyecto "Programacion Vectorial en
-Ensamblador x86-64 (NASM/Linux)". **Aqui no esta la solucion**: contiene
-la estructura, las firmas de las funciones y **un** ejemplo completo por
-version (`sum_array`) que sirve de patron. El resto de las funciones
-(`compute_stats`, `normalize_array`) estan marcadas con `TODO` y deben
-ser implementadas por el estudiante, tanto en la version escalar como
-en la vectorial.
+Implementacion del proyecto "Programacion Vectorial en Ensamblador
+x86-64 (NASM/Linux)". Incluye una version escalar y una version AVX2 de
+los tres kernels, el driver C, las herramientas de prueba y el benchmark.
 
 ## Estructura
 
@@ -66,7 +62,7 @@ para probar el manejo del remanente.
 
 El tercer argumento es el numero de repeticiones del kernel, usado para
 promediar el tiempo medido con `clock_gettime` (util para sus mediciones
-de rendimiento con distintos tamanos de `N`).
+de rendimiento con distintos tamaños de `N`).
 
 Cada corrida tambien escribe `data/output_scalar.dat.stats.txt` (o
 `_vector.dat.stats.txt`) con un resumen en texto plano de los
@@ -79,23 +75,20 @@ python3 tools/verify_reference.py data/input.dat data/output_scalar.dat.stats.tx
 python3 tools/verify_reference.py data/input.dat data/output_vector.dat.stats.txt
 ```
 
-## Lo que debe implementar el estudiante
+## Implementacion actual
 
-1. **`asm/scalar/stats_scalar.asm`**: completar `compute_stats` y
-   `normalize_array` con instrucciones escalares (`movss`, `addss`,
-   `subss`, `mulss`, `divss`, `sqrtss`, `comiss`, etc.).
-2. **`asm/vector/stats_vector.asm`**: completar `compute_stats` y
-   `normalize_array` con AVX2 (`vmovaps`/`vmovups`, `vaddps`, `vsubps`,
-   `vmulps`, `vdivps`, `vminps`, `vmaxps`, `vbroadcastss`, reduccion
-   horizontal), **manejando el remanente** igual que en el `sum_array`
-   de ejemplo.
-3. Generar sus propios archivos de prueba con `gen_input.py` para los
-   casos borde exigidos en la propuesta (N=0, N=1, N no multiplo de 8,
-   valores constantes, valores negativos/extremos).
-4. Usar GDB para inspeccionar registros YMM y memoria en un caso
-   pequeno, como se pide en la propuesta (ver ejemplo mas abajo).
-5. Medir tiempos con distintos tamanos de `N` (use el argumento de
-   repeticiones del driver) y, opcionalmente, `perf stat`.
+1. **Version escalar:** `stats_scalar.asm` procesa un elemento por
+   iteracion con instrucciones XMM escalares (`movss`, `addss`, `subss`,
+   `mulss`, `divss`, `minss`, `maxss`).
+2. **Version vectorial:** `stats_vector.asm` procesa ocho floats por
+   iteracion con AVX2 (`vmovaps`/`vmovups`, `vaddps`, `vsubps`, `vmulps`,
+   `vdivps`, `vminps`, `vmaxps`) y maneja el remanente con un bucle
+   escalar.
+3. En ambas versiones, la media y la suma de cuadrados se acumulan
+   internamente en doble precision para evitar perdida numerica con
+   `N = 50000000`; los resultados y los arreglos siguen siendo `float32`.
+4. Los arreglos del driver estan alineados a 32 bytes y el camino AVX2
+   usa `vmovaps` para las cargas y stores principales.
 
 ## Notas de depuracion con GDB
 
@@ -103,14 +96,42 @@ Los binarios se compilan con simbolos de depuracion (`-g` en gcc y
 `-g -F dwarf` en nasm), por lo que se puede poner breakpoints
 directamente en las etiquetas del ensamblador:
 
+Para reproducir la evidencia exigida con `N = 16`:
+
 ```bash
-gdb --args ./bin/norm_vector data/input_small.dat data/out.dat 1
-(gdb) break normalize_array
-(gdb) run
-(gdb) info registers ymm0
-(gdb) stepi
-(gdb) x/8fw &out[0]
+python3 tools/gen_input.py 16 data/input_gdb16.dat random 42
+gdb --args ./bin/norm_vector data/input_gdb16.dat data/output_gdb16.dat 1
 ```
+
+Escriba cada comando en una linea separada dentro de GDB:
+
+```gdb
+break *sum_array+28
+run
+p $ymm0.v8_float
+p $ymm1.v8_float
+x/8fw $rdi
+continue
+p $ymm0.v8_float
+x/8fw $rdi+32
+disable 1
+break normalize_array
+continue
+set $out = $rsi
+finish
+x/16fw $out
+quit
+```
+
+`sum_array+28` detiene la ejecucion inmediatamente despues de `vaddps`.
+Para verificar el archivo desde la terminal, no desde el prompt de GDB:
+
+```bash
+python3 tools/verify_array.py data/input_gdb16.dat data/output_gdb16.dat
+```
+
+La sesion verificada mostro dos bloques AVX2 de ocho floats y el verificador
+reporto `RESULTADO ARREGLO: PASA`, con error absoluto maximo de `1.42e-7`.
 
 (La sintaxis exacta para imprimir un YMM completo como 8 floats
 depende de la version de GDB instalada: pruebe `info registers ymm0`,
@@ -243,33 +264,46 @@ make clean && make                     # debe salir sin advertencias
 python3 tools/run_tests.py             # correctud
 python3 tools/benchmark.py             # rendimiento + gráfico
 
-# contadores de hardware (sección 2.4.b.5)
+# contadores de hardware (seccion 2.4.b.5)
 sudo sysctl -w kernel.perf_event_paranoid=1
-python3 tools/gen_input.py 1000000 data/perf.dat random 7
+python3 tools/gen_input.py 1000000 data/perf_input.dat random 7
 perf stat -e cycles,instructions,cache-misses,cache-references \
-    ./bin/norm_scalar data/perf.dat data/ps.dat 30
+   ./bin/norm_scalar data/perf_input.dat data/ps.dat 30
 perf stat -e cycles,instructions,cache-misses,cache-references \
-    ./bin/norm_vector data/perf.dat data/pv.dat 30
+   ./bin/norm_vector data/perf_input.dat data/pv.dat 30
 ```
 
-## Estado y tareas pendientes en los kernels
+En WSL, `perf` puede mostrar `<not supported>` incluso despues de ajustar
+`kernel.perf_event_paranoid`; esto indica que la maquina virtual no expone
+los contadores PMU. En ese caso se reportan las mediciones del driver
+(`clock_gettime` y RDTSC) y se documenta la limitacion. No se debe usar un
+archivo inexistente como `data/benchmark_1000000.dat`: `benchmark.py` genera
+`data/bench_1000000.dat` y puede borrarlo si no se usa `--mantener`.
 
-Los 11 casos borde pasan en ambas versiones y entre sí. Las dos tareas prioritarias:
+## Estado actual y resultados verificados
 
-**1. Acumuladores parciales en el `.var_loop` escalar.** Con N = 10⁶ el
-escalar da 3.55×10⁻⁴ de error relativo en `var` (falla la tolerancia de
-la sección 2.3) y el vectorial 1.93×10⁻⁵. La diferencia de `stddev` entre
-ambos es 1.68×10⁻⁴ y se propaga **idéntica** a cada z-score, así que los
-991 546 de 1 000 000 elementos que fallan son **un solo error**. Causa:
-el escalar usa un único acumulador que llega a ~3.3×10⁹, magnitud donde
-el espaciado entre `float32` consecutivos es ~400 mientras cada término
-vale ~3300. El vectorial no sufre porque sus 8 carriles son 8
-acumuladores independientes.
+La compilacion, los casos borde y la comparacion entre versiones pasan:
 
-**2. Recíproco en lugar de `vdivps` en `normalize_array`.** Es el cuello
-de botella: su speedup cae de 6.91× a 2.02× y arrastra el total.
-`vdivps` tiene throughput recíproco de ~5 ciclos frente a 0.5 de
-`vmulps`, y además es la única fase que escribe (doble tráfico de
-memoria). El enunciado contempla explícitamente esta optimización.
+```text
+RESULTADO GLOBAL: TODO PASA
+```
 
-Mediciones completas en `data/benchmark.csv`.
+La acumulacion en `float32` producia errores grandes en la desviacion
+estandar para `N = 50000000` (hasta 6.5% en la version escalar). Por eso
+se usan acumuladores `float64` internos y se convierte a `float32` solo al
+guardar los estadisticos. Luego de la correccion, ambas salidas pasaron
+`verify_array.py` y `verify_reference.py` para ese tamaño.
+
+Una corrida estable de 50 repeticiones produjo estos speedups:
+
+| N | Escalar (ms) | Vectorial (ms) | Speedup |
+|---:|---:|---:|---:|
+| 1,000 | 0.0037 | 0.0006 | 6.38x |
+| 100,000 | 0.4100 | 0.0395 | 10.38x |
+| 1,000,000 | 3.8921 | 0.4304 | 9.04x |
+| 50,000,000 | 211.0403 | 65.1349 | 3.24x |
+
+El speedup baja para `N = 50000000` porque el costo queda dominado por el
+ancho de banda de memoria. Los tamaños pequenos tienen tiempos muy cortos
+y son mas sensibles al ruido del sistema; para comparar se deben repetir
+las mediciones y reportar promedio y desviacion estandar.

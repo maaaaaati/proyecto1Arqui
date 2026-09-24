@@ -81,24 +81,33 @@ compute_stats:
     push    r9              ; max*  -> queda en [rsp]
 
     test    esi, esi
-    jz      .zero_case
+    jle     .zero_case
 
     mov     r12, rdi         ; r12 = arr
     mov     r13, rsi         ; r13 = n
     mov     r14, rdx         ; r14 = mean*
     mov     r15, rcx         ; r15 = var*
 
-    ; --- mean = sum_array(arr, n) / n ---
-    mov     rdi, r12
-    mov     esi, r13d
-    call    sum_array        ; xmm0 = total
+    ; --- mean = sum(arr) / n, acumulado en doble precision ---
+    xorpd   xmm0, xmm0       ; sum = 0.0 double
+    xor     eax, eax
+.mean_loop:
+    cmp     eax, r13d
+    jge     .mean_done
+    movss   xmm1, [r12 + rax*4]
+    cvtss2sd xmm1, xmm1
+    addsd   xmm0, xmm1
+    inc     eax
+    jmp     .mean_loop
 
-    cvtsi2ss xmm1, r13d
-    divss    xmm0, xmm1      ; xmm0 = mean
-    movss    [r14], xmm0     ; *mean = xmm0
+.mean_done:
+    cvtsi2sd xmm1, r13d
+    divsd   xmm0, xmm1       ; xmm0 = mean double
+    cvtsd2ss xmm7, xmm0
+    movss   [r14], xmm7      ; *mean = (float) mean
 
     ; --- var, min, max en un solo recorrido ---
-    xorps   xmm2, xmm2        ; sum_sq = 0.0
+    xorpd   xmm2, xmm2        ; sum_sq = 0.0 double
     movss   xmm4, [r12]       ; xmm4 = min, semilla con arr[0]
     movss   xmm5, [r12]       ; xmm5 = max, semilla con arr[0]
     xor     eax, eax          ; i = 0
@@ -108,10 +117,10 @@ compute_stats:
 
     movss   xmm3, [r12 + rax*4]   ; xmm3 = arr[i]
 
-    movss   xmm6, xmm3
-    subss   xmm6, xmm0            ; xmm6 = arr[i] - mean
-    mulss   xmm6, xmm6            ; xmm6 = (arr[i]-mean)^2
-    addss   xmm2, xmm6            ; sum_sq += xmm6
+    cvtss2sd xmm6, xmm3
+    subsd   xmm6, xmm0            ; xmm6 = arr[i] - mean
+    mulsd   xmm6, xmm6            ; xmm6 = (arr[i]-mean)^2
+    addsd   xmm2, xmm6            ; sum_sq += xmm6
 
     minss   xmm4, xmm3            ; min = min(min, arr[i])
     maxss   xmm5, xmm3            ; max = max(max, arr[i])
@@ -120,9 +129,9 @@ compute_stats:
     jmp     .var_loop
 
 .var_done:
-    cvtsi2ss xmm1, r13d
-    divss    xmm2, xmm1
-    movss    [r15], xmm2          ; *var = xmm2
+    divsd   xmm2, xmm1
+    cvtsd2ss xmm7, xmm2
+    movss   [r15], xmm7          ; *var = (float) xmm2
 
     mov     rax, [rsp]            ; recuperar max* del tope de la pila
     mov     rcx, [rsp + 8]        ; recuperar min*
