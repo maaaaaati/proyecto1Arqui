@@ -99,9 +99,8 @@ compute_stats:
     mov     r14, rdx               ; r14 = mean*
     mov     r15, rcx               ; r15 = var*
 
-    ; --- mean = sum(arr) / n, con dos acumuladores vectoriales double ---
-    vxorpd  ymm10, ymm10, ymm10
-    vxorpd  ymm11, ymm11, ymm11
+    ; --- mean = sum(arr) / n, acumulado en float32 ---
+    vxorps  ymm10, ymm10, ymm10
     xor     eax, eax
     mov     ecx, r13d
     and     ecx, ~7
@@ -109,43 +108,32 @@ compute_stats:
     cmp     eax, ecx
     jge     .mean_reduce
     vmovaps ymm6, [r12 + rax*4]
-    vcvtps2pd ymm8, xmm6
-    vextractf128 xmm7, ymm6, 1
-    vcvtps2pd ymm9, xmm7
-    vaddpd  ymm10, ymm10, ymm8
-    vaddpd  ymm11, ymm11, ymm9
+    vaddps  ymm10, ymm10, ymm6
     add     eax, 8
     jmp     .mean_vec_loop
 
 .mean_reduce:
     vextractf128 xmm8, ymm10, 1
-    vaddpd  xmm10, xmm10, xmm8
-    vhaddpd xmm10, xmm10, xmm10
-    vextractf128 xmm8, ymm11, 1
-    vaddpd  xmm11, xmm11, xmm8
-    vhaddpd xmm11, xmm11, xmm11
-    vaddsd  xmm10, xmm10, xmm11
+    vaddps  xmm10, xmm10, xmm8
+    vhaddps xmm10, xmm10, xmm10
+    vhaddps xmm10, xmm10, xmm10
 .mean_tail:
     cmp     eax, r13d
     jge     .mean_done
     vmovss  xmm6, [r12 + rax*4]
-    vcvtss2sd xmm6, xmm6, xmm6
-    vaddsd  xmm10, xmm10, xmm6
+    vaddss  xmm10, xmm10, xmm6
     inc     eax
     jmp     .mean_tail
 .mean_done:
-    vxorpd  xmm1, xmm1, xmm1
-    vcvtsi2sd xmm1, xmm1, r13d
-    vdivsd  xmm10, xmm10, xmm1
-    vmovapd xmm15, xmm10         ; conservar mean double para la pasada 2
-    vcvtsd2ss xmm0, xmm10, xmm10
-    vmovss  [r14], xmm0            ; *mean = (float) mean
+    vcvtsi2ss xmm1, xmm1, r13d
+    vdivss  xmm10, xmm10, xmm1
+    vmovss  xmm15, xmm10         ; conservar mean para la pasada 2
+    vmovss  [r14], xmm10         ; *mean = mean
 
     ; --- inicializacion de la pasada 2 ---
-    vbroadcastss ymm3, xmm0        ; ymm3 = [mean x8]
-    vxorpd  ymm10, ymm10, ymm10    ; sum_sq parcial, 4 doubles bajos
-    vxorpd  ymm11, ymm11, ymm11    ; sum_sq parcial, 4 doubles altos
-    vbroadcastsd ymm14, xmm15      ; mean double en 4 carriles
+    vbroadcastss ymm3, xmm10       ; ymm3 = [mean x8]
+    vxorps  ymm2, ymm2, ymm2       ; sum_sq = 0.0f en 8 carriles
+    vxorps  ymm11, ymm11, ymm11    ; compensacion de Kahan por carril
     vbroadcastss ymm4, [r12]       ; min = arr[0] en los 8 carriles (n >= 1 aqui)
     vmovaps ymm5, ymm4             ; max = arr[0] en los 8 carriles
     xor     eax, eax               ; i = 0
@@ -156,29 +144,25 @@ compute_stats:
     cmp     eax, ecx
     jge     .cs_reduce
     vmovaps ymm6, [r12 + rax*4]    ; 8 floats
-    vextractf128 xmm7, ymm6, 1
-    vcvtps2pd ymm8, xmm6           ; cuatro x en double
-    vcvtps2pd ymm9, xmm7           ; cuatro x en double
-    vsubpd  ymm8, ymm8, ymm14
-    vsubpd  ymm9, ymm9, ymm14
-    vmulpd  ymm8, ymm8, ymm8
-    vmulpd  ymm9, ymm9, ymm9
-    vaddpd  ymm10, ymm10, ymm8
-    vaddpd  ymm11, ymm11, ymm9
+    vsubps  ymm7, ymm6, ymm3       ; x - mean
+    vmulps  ymm7, ymm7, ymm7       ; (x - mean)^2
+    vsubps  ymm7, ymm7, ymm11     ; termino corregido
+    vaddps  ymm8, ymm2, ymm7       ; nueva suma por carril
+    vsubps  ymm11, ymm8, ymm2
+    vsubps  ymm11, ymm11, ymm7    ; nueva compensacion
+    vmovaps ymm2, ymm8
     vminps  ymm4, ymm4, ymm6       ; min por carril
     vmaxps  ymm5, ymm5, ymm6       ; max por carril
     add     eax, 8
     jmp     .cs_vec_loop
 
 .cs_reduce:
-    ; --- reduccion horizontal de los dos acumuladores double ---
-    vextractf128 xmm8, ymm10, 1
-    vaddpd  xmm10, xmm10, xmm8
-    vhaddpd xmm10, xmm10, xmm10
-    vextractf128 xmm8, ymm11, 1
-    vaddpd  xmm11, xmm11, xmm8
-    vhaddpd xmm11, xmm11, xmm11
-    vaddsd  xmm10, xmm10, xmm11
+    ; --- reduccion horizontal del acumulador float32 ---
+    vsubps  ymm2, ymm2, ymm11     ; incorporar el error de cada carril
+    vextractf128 xmm8, ymm2, 1
+    vaddps  xmm2, xmm2, xmm8
+    vhaddps xmm2, xmm2, xmm2
+    vhaddps xmm2, xmm2, xmm2
 
     ; --- reduccion horizontal de min: 8 -> 4 -> 2 -> 1 ---
     vextractf128 xmm8, ymm4, 1
@@ -197,6 +181,7 @@ compute_stats:
     vmaxps  xmm5, xmm5, xmm8       ; xmm5[0] = max de los 8 carriles
     vmovaps xmm12, xmm4             ; min escalar para el tail
     vmovaps xmm13, xmm5             ; max escalar para el tail
+    vxorps  xmm9, xmm9, xmm9       ; compensacion de Kahan del tail
 
 .cs_tail:
     ; --- remanente (n % 8), un elemento por iteracion ---
@@ -205,17 +190,19 @@ compute_stats:
     vmovss  xmm6, [r12 + rax*4]    ; x
     vminss  xmm12, xmm12, xmm6
     vmaxss  xmm13, xmm13, xmm6
-    vcvtss2sd xmm6, xmm6, xmm6
-    vsubsd  xmm6, xmm6, xmm15      ; x - mean (xmm15[0] = mean double)
-    vmulsd  xmm6, xmm6, xmm6
-    vaddsd  xmm10, xmm10, xmm6
+    vsubss  xmm6, xmm6, xmm15      ; x - mean
+    vmulss  xmm6, xmm6, xmm6
+    vsubss  xmm6, xmm6, xmm9       ; termino corregido
+    vaddss  xmm7, xmm2, xmm6       ; nueva suma
+    vsubss  xmm9, xmm7, xmm2
+    vsubss  xmm9, xmm9, xmm6       ; nueva compensacion
+    vmovss  xmm2, xmm7
     inc     eax
     jmp     .cs_tail
 
 .cs_finish:
-    vcvtsi2sd xmm1, xmm1, r13d
-    vdivsd  xmm10, xmm10, xmm1     ; var = sum_sq / n
-    vcvtsd2ss xmm2, xmm10, xmm10
+    vsubss  xmm2, xmm2, xmm9       ; incorporar el error del tail
+    vdivss  xmm2, xmm2, xmm1       ; var = sum_sq / n
     vmovss  [r15], xmm2            ; *var
     vmovss  [rbx], xmm12           ; *min
     mov     rax, [rsp]             ; rax = max*

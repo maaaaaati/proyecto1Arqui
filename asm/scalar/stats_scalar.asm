@@ -88,26 +88,25 @@ compute_stats:
     mov     r14, rdx         ; r14 = mean*
     mov     r15, rcx         ; r15 = var*
 
-    ; --- mean = sum(arr) / n, acumulado en doble precision ---
-    xorpd   xmm0, xmm0       ; sum = 0.0 double
+    ; --- mean = sum(arr) / n, acumulado en float32 ---
+    xorps   xmm0, xmm0       ; sum = 0.0f
     xor     eax, eax
 .mean_loop:
     cmp     eax, r13d
     jge     .mean_done
     movss   xmm1, [r12 + rax*4]
-    cvtss2sd xmm1, xmm1
-    addsd   xmm0, xmm1
+    addss   xmm0, xmm1
     inc     eax
     jmp     .mean_loop
 
 .mean_done:
-    cvtsi2sd xmm1, r13d
-    divsd   xmm0, xmm1       ; xmm0 = mean double
-    cvtsd2ss xmm7, xmm0
-    movss   [r14], xmm7      ; *mean = (float) mean
+    cvtsi2ss xmm1, r13d
+    divss   xmm0, xmm1       ; xmm0 = mean
+    movss   [r14], xmm0      ; *mean = mean
 
     ; --- var, min, max en un solo recorrido ---
-    xorpd   xmm2, xmm2        ; sum_sq = 0.0 double
+    xorps   xmm2, xmm2        ; sum_sq = 0.0f
+    xorps   xmm7, xmm7        ; compensacion de Kahan
     movss   xmm4, [r12]       ; xmm4 = min, semilla con arr[0]
     movss   xmm5, [r12]       ; xmm5 = max, semilla con arr[0]
     xor     eax, eax          ; i = 0
@@ -117,10 +116,16 @@ compute_stats:
 
     movss   xmm3, [r12 + rax*4]   ; xmm3 = arr[i]
 
-    cvtss2sd xmm6, xmm3
-    subsd   xmm6, xmm0            ; xmm6 = arr[i] - mean
-    mulsd   xmm6, xmm6            ; xmm6 = (arr[i]-mean)^2
-    addsd   xmm2, xmm6            ; sum_sq += xmm6
+    movss   xmm6, xmm3
+    subss   xmm6, xmm0            ; xmm6 = arr[i] - mean
+    mulss   xmm6, xmm6            ; xmm6 = (arr[i]-mean)^2
+    subss   xmm6, xmm7            ; termino corregido
+    movss   xmm8, xmm2
+    addss   xmm8, xmm6            ; nueva suma
+    movss   xmm7, xmm8
+    subss   xmm7, xmm2
+    subss   xmm7, xmm6            ; nueva compensacion
+    movss   xmm2, xmm8
 
     minss   xmm4, xmm3            ; min = min(min, arr[i])
     maxss   xmm5, xmm3            ; max = max(max, arr[i])
@@ -129,9 +134,9 @@ compute_stats:
     jmp     .var_loop
 
 .var_done:
-    divsd   xmm2, xmm1
-    cvtsd2ss xmm7, xmm2
-    movss   [r15], xmm7          ; *var = (float) xmm2
+    subss   xmm2, xmm7            ; incorporar el ultimo error redondeo
+    divss   xmm2, xmm1
+    movss   [r15], xmm2          ; *var = sum_sq / n
 
     mov     rax, [rsp]            ; recuperar max* del tope de la pila
     mov     rcx, [rsp + 8]        ; recuperar min*

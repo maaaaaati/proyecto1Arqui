@@ -84,9 +84,10 @@ python3 tools/verify_reference.py data/input.dat data/output_vector.dat.stats.tx
    iteracion con AVX2 (`vmovaps`/`vmovups`, `vaddps`, `vsubps`, `vmulps`,
    `vdivps`, `vminps`, `vmaxps`) y maneja el remanente con un bucle
    escalar.
-3. En ambas versiones, la media y la suma de cuadrados se acumulan
-   internamente en doble precision para evitar perdida numerica con
-   `N = 50000000`; los resultados y los arreglos siguen siendo `float32`.
+3. En ambas versiones, la suma, la media y la varianza se calculan en
+   `float32`, como exige el enunciado. La suma de cuadrados usa compensacion
+   de Kahan para reducir el error de acumulacion. La referencia de NumPy usa
+   `float64` de forma independiente para comparar los resultados.
 4. Los arreglos del driver estan alineados a 32 bytes y el camino AVX2
    usa `vmovaps` para las cargas y stores principales.
 
@@ -288,22 +289,25 @@ La compilacion, los casos borde y la comparacion entre versiones pasan:
 RESULTADO GLOBAL: TODO PASA
 ```
 
-La acumulacion en `float32` producia errores grandes en la desviacion
-estandar para `N = 50000000` (hasta 6.5% en la version escalar). Por eso
-se usan acumuladores `float64` internos y se convierte a `float32` solo al
-guardar los estadisticos. Luego de la correccion, ambas salidas pasaron
-`verify_array.py` y `verify_reference.py` para ese tamaño.
+Los kernels actuales acumulan en `float32`; la suma de cuadrados usa
+compensacion de Kahan. La compilacion y los casos borde hasta `N = 100000`
+pasaron. En `N = 1000000` y `N = 50000000`, ambas versiones pasaron
+`verify_reference.py` y `verify_array.py`; para `N = 50000000`, la varianza
+obtenida fue `3333.2251` frente a la referencia `3333.22512`.
 
-Una corrida estable de 50 repeticiones produjo estos speedups:
+Se ejecuto el benchmark actual con 50 repeticiones para los cuatro tamanos;
+los datos completos estan en `data/benchmark.csv`.
 
-| N | Escalar (ms) | Vectorial (ms) | Speedup |
+| N | Escalar (ms, media +/- desv.) | Vectorial (ms, media +/- desv.) | Speedup |
 |---:|---:|---:|---:|
-| 1,000 | 0.0037 | 0.0006 | 6.38x |
-| 100,000 | 0.4100 | 0.0395 | 10.38x |
-| 1,000,000 | 3.8921 | 0.4304 | 9.04x |
-| 50,000,000 | 211.0403 | 65.1349 | 3.24x |
+| 1,000 | 0.004657 +/- 0.000011 | 0.001716 +/- 0.000034 | 2.71x |
+| 100,000 | 0.498950 +/- 0.115782 | 0.059793 +/- 0.014270 | 8.34x |
+| 1,000,000 | 5.424177 +/- 1.784449 | 0.876602 +/- 0.537777 | 6.19x |
+| 50,000,000 | 273.962483 +/- 17.639486 | 79.194787 +/- 3.369668 | 3.46x |
 
-El speedup baja para `N = 50000000` porque el costo queda dominado por el
-ancho de banda de memoria. Los tamaños pequenos tienen tiempos muy cortos
-y son mas sensibles al ruido del sistema; para comparar se deben repetir
-las mediciones y reportar promedio y desviacion estandar.
+La desviacion estandar supera el 5% de la media para ambas versiones en
+`N = 100000` y `N = 1000000`, y para la version escalar en `N = 50000000`.
+Esos resultados son provisionales y deben repetirse antes de considerarlos
+estables. El speedup menor para `N = 50000000` es consistente con el impacto
+del ancho de banda de memoria; esa medicion tambien tiene variabilidad alta
+en la version escalar.
