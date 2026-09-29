@@ -179,9 +179,19 @@ def main():
         ax.semilogx(ns, sp, "o-", linewidth=2, markersize=8, label="Speedup medido")
         ax.axhline(8.0, color="red", linestyle="--", linewidth=1.2,
                    label="Limite teorico AVX2 (8x)")
+
+        # Margen superior para que ninguna etiqueta choque con el titulo
+        tope = max(max(sp), 8.0)
+        ax.set_ylim(0, tope * 1.20)
+
+        # La etiqueta va arriba del punto, salvo en el maximo (iria contra
+        # el borde) y cuando el punto esta cerca de la linea de 8x
         for f in filas:
+            arriba = not (f["speedup"] == max(sp) or abs(f["speedup"] - 8.0) < 0.45)
             ax.annotate(f"{f['speedup']:.2f}x", (f["n"], f["speedup"]),
-                        textcoords="offset points", xytext=(0, 10), ha="center")
+                        textcoords="offset points",
+                        xytext=(0, 11 if arriba else -18), ha="center",
+                        fontsize=10)
         ax.set_xlabel("N (escala logaritmica)")
         ax.set_ylabel("Speedup = tiempo_escalar / tiempo_vectorial")
         ax.set_title("Speedup de la version AVX2 frente a la escalar")

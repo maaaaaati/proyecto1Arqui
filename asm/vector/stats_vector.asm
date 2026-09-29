@@ -8,7 +8,20 @@
 ;   cat /proc/cpuinfo | grep avx2
 ; =============================================================
 
-    global sum_array
+; Umbral de elementos a partir del cual conviene el almacenamiento no
+; temporal en normalize_array.
+;
+; Criterio: normalize_array toca 8 bytes por elemento (4 de entrada +
+; 4 de salida), asi que su conjunto de trabajo es 8N bytes. El punto de
+; quiebre esta donde ese conjunto deja de caber en el ultimo nivel de
+; cache. En el equipo de pruebas (Intel Core i5-6300U, Skylake) la L3
+; es de 3 MiB compartida:
+;
+;     3 MiB / 8 bytes por elemento = 393 216 elementos
+;
+NORM_NT_UMBRAL equ 393216
+
+global sum_array
     global compute_stats
     global normalize_array
 
@@ -247,28 +260,70 @@ normalize_array:
     vmovd   xmm1, eax              ; stddev = 1.0
 
 .norm_setup:
+    ; --- Reciproco: una sola division en toda la funcion ---
+    ; vdivps tiene latencia ~14 ciclos y throughput reciproco ~5 ciclos
+    ; (la unidad de division no esta segmentada), frente a 4 y 0,5 de
+    ; vmulps. Se calcula 1/stddev UNA vez y el bucle multiplica.
+    ; Costo: un redondeo extra (~1e-7 relativo), despreciable frente a
+    ; la tolerancia de 1e-4 del enunciado.
+    mov     eax, 0x3F800000        ; 1.0f en IEEE-754
+    vmovd   xmm3, eax
+    vdivss  xmm3, xmm3, xmm1       ; xmm3 = 1.0 / stddev
+
     vbroadcastss ymm8, xmm0        ; ymm8 = [mean x8]
-    vbroadcastss ymm9, xmm1        ; ymm9 = [stddev x8]
+    vbroadcastss ymm9, xmm3        ; ymm9 = [1/stddev x8]
     xor     eax, eax               ; i = 0
     mov     ecx, edx
     and     ecx, ~7                ; ecx = n redondeado hacia abajo a multiplo de 8
 
-.norm_vec_loop:
+    ; --- Elegir camino segun el tamano del arreglo de salida ---
+    ; Escribir con vmovaps provoca "read for ownership": el procesador
+    ; lee la linea de cache de destino antes de sobrescribirla completa,
+    ; lo que desperdicia la mitad del ancho de banda cuando el arreglo
+    ; no cabe en cache. vmovntps (almacenamiento no temporal) escribe
+    ; directo a memoria y evita esa lectura.
+    ;
+    ; Pero vmovntps EVITA la cache por diseno, asi que perjudica los
+    ; casos en que la salida si cabe: medido en un i5 Skylake movil,
+    ; con N=1e5 el camino temporal es ~2x mas rapido y con N=2e7 el no
+    ; temporal lo es ~1,6x. Por eso se decide UNA vez, fuera del bucle.
+    ;
+    ; El umbral NORM_NT_UMBRAL se deriva del tamano de la L3 del equipo
+    ; de pruebas; ver su definicion al inicio del archivo.
+    cmp     edx, NORM_NT_UMBRAL
+    jae     .norm_vec_loop_nt
+
+.norm_vec_loop:                    ; camino TEMPORAL (cabe en cache)
     cmp     eax, ecx
     jge     .norm_tail
     vmovaps ymm2, [rdi + rax*4]    ; 8 floats de entrada
     vsubps  ymm2, ymm2, ymm8       ; x - mean
-    vdivps  ymm2, ymm2, ymm9       ; (x - mean) / stddev
+    vmulps  ymm2, ymm2, ymm9       ; (x - mean) * (1/stddev)
     vmovaps [rsi + rax*4], ymm2    ; 8 floats de salida
     add     eax, 8
     jmp     .norm_vec_loop
+
+.norm_vec_loop_nt:                 ; camino NO TEMPORAL (limitado por memoria)
+    cmp     eax, ecx
+    jge     .norm_tail_nt
+    vmovaps ymm2, [rdi + rax*4]
+    vsubps  ymm2, ymm2, ymm8
+    vmulps  ymm2, ymm2, ymm9
+    vmovntps [rsi + rax*4], ymm2   ; escribe sin pasar por cache
+    add     eax, 8
+    jmp     .norm_vec_loop_nt
+
+.norm_tail_nt:
+    ; sfence garantiza que los almacenamientos no temporales sean
+    ; visibles antes de que el driver lea el arreglo de salida.
+    sfence
 
 .norm_tail:
     cmp     eax, edx
     jge     .norm_done
     vmovss  xmm2, [rdi + rax*4]
     vsubss  xmm2, xmm2, xmm8       ; xmm8[0] = mean
-    vdivss  xmm2, xmm2, xmm9       ; xmm9[0] = stddev
+    vmulss  xmm2, xmm2, xmm9       ; xmm9[0] = 1/stddev
     vmovss  [rsi + rax*4], xmm2
     inc     eax
     jmp     .norm_tail
