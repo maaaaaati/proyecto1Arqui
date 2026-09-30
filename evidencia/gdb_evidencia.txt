@@ -1,0 +1,106 @@
+GNU gdb (Ubuntu 15.1-1ubuntu1~24.04.1) 15.1
+Copyright (C) 2024 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+Type "show copying" and "show warranty" for details.
+This GDB was configured as "x86_64-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<https://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+    <http://www.gnu.org/software/gdb/documentation/>.
+
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Reading symbols from ./bin/norm_vector...
+Punto de interrupción 1 at 0x255f: file asm/vector/stats_vector.asm, line 52.
+
+This GDB supports auto-downloading debuginfo from the following URLs:
+  <https://debuginfod.ubuntu.com>
+Debuginfod has been disabled.
+To make this setting permanent, add 'set debuginfod enabled off' to .gdbinit.
+[Depuración de hilo usando libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Breakpoint 1, sum_array.sum_vec_loop () at asm/vector/stats_vector.asm:52
+52	    cmp     eax, ecx
+55	    vaddps  ymm0, ymm0, ymm1       ; acumula por carril
+
+===== ITERACION 1 (elementos 0-7): ANTES del vaddps =====
+--- instruccion que esta por ejecutarse ---
+=> 0x555555556568 <sum_array.sum_vec_loop+9>:	vaddps %ymm1,%ymm0,%ymm0
+--- ymm0 = acumulador, aun en cero ---
+$1 = {0, 0, 0, 0, 0, 0, 0, 0}
+--- ymm1 = los 8 floats recien cargados de memoria ---
+$2 = {54.7912102, -12.2243118, 71.7195816, 39.4736061, -81.1645279, 95.1244736, 52.2279396, 57.2128601}
+56	    add     eax, 8
+
+===== ITERACION 1: DESPUES del vaddps =====
+$3 = {54.7912102, -12.2243118, 71.7195816, 39.4736061, -81.1645279, 95.1244736, 52.2279396, 57.2128601}
+
+Breakpoint 1, sum_array.sum_vec_loop () at asm/vector/stats_vector.asm:52
+52	    cmp     eax, ecx
+55	    vaddps  ymm0, ymm0, ymm1       ; acumula por carril
+
+===== ITERACION 2 (elementos 8-15): ANTES del vaddps =====
+$4 = {-74.3772736, -9.92281246, -25.840395, 85.3529968, 28.7730236, 64.5523224, -11.3171606, -54.5522575}
+56	    add     eax, 8
+
+===== ITERACION 2: DESPUES del vaddps =====
+--- el carril k contiene arr[k] + arr[k+8] ---
+$5 = {-19.5860634, -22.1471252, 45.8791885, 124.826599, -52.3915024, 159.676788, 40.910778, 2.66060257}
+
+--- el mismo registro en hexadecimal ---
+$6 = {0xc19cb042, 0xc1b12d50, 0x4237844a, 0x42f9a738, 0xc25190e6, 0x431fad42, 0x4223a4a3, 0x402a4750}
+
+--- volcado completo (funciona en cualquier version de GDB) ---
+ymm0           {v16_bfloat16 = {0xb042, 0xc19c, 0x2d50, 0xc1b1, 0x844a, 0x4237, 0xa738, 0x42f9, 0x90e6, 0xc251, 0xad42, 0x431f, 0xa4a3, 0x4223, 0x4750, 0x402a}, v16_half = {0xb042, 0xc19c, 0x2d50, 0xc1b1, 0x844a, 0x4237, 0xa738, 0x42f9, 0x90e6, 0xc251, 0xad42, 0x431f, 0xa4a3, 0x4223, 0x4750, 0x402a}, v8_float = {0xc19cb042, 0xc1b12d50, 0x4237844a, 0x42f9a738, 0xc25190e6, 0x431fad42, 0x4223a4a3, 0x402a4750}, v4_double = {0xc1b12d50c19cb042, 0x42f9a7384237844a, 0x431fad42c25190e6, 0x402a47504223a4a3}, v32_int8 = {0x42, 0xb0, 0x9c, 0xc1, 0x50, 0x2d, 0xb1, 0xc1, 0x4a, 0x84, 0x37, 0x42, 0x38, 0xa7, 0xf9, 0x42, 0xe6, 0x90, 0x51, 0xc2, 0x42, 0xad, 0x1f, 0x43, 0xa3, 0xa4, 0x23, 0x42, 0x50, 0x47, 0x2a, 0x40}, v16_int16 = {0xb042, 0xc19c, 0x2d50, 0xc1b1, 0x844a, 0x4237, 0xa738, 0x42f9, 0x90e6, 0xc251, 0xad42, 0x431f, 0xa4a3, 0x4223, 0x4750, 0x402a}, v8_int32 = {0xc19cb042, 0xc1b12d50, 0x4237844a, 0x42f9a738, 0xc25190e6, 0x431fad42, 0x4223a4a3, 0x402a4750}, v4_int64 = {0xc1b12d50c19cb042, 0x42f9a7384237844a, 0x431fad42c25190e6, 0x402a47504223a4a3}, v2_int128 = {0x42f9a7384237844ac1b12d50c19cb042, 0x402a47504223a4a3431fad42c25190e6}}
+Punto de interrupción 2 at 0x55555555674f: file asm/vector/stats_vector.asm, line 255.
+[Depuración de hilo usando libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Breakpoint 2, normalize_array () at asm/vector/stats_vector.asm:255
+255	    vxorps  xmm2, xmm2, xmm2
+
+===== argumentos segun la ABI System V AMD64 =====
+rdi (puntero in)  = 0x55555555b4c0
+rsi (puntero out) = 0x55555555a480
+edx (n)           = 16
+--- xmm0 = mean, xmm1 = stddev (cola de flotantes, aparte) ---
+$7 = 17.4893284
+$8 = 54.9311981
+--- verificacion de alineacion: rsi debe ser multiplo de 32 ---
+rsi mod 32 = 0
+Punto de interrupción 3 at 0x5555555567e5: file asm/vector/stats_vector.asm, line 332.
+
+Breakpoint 3, normalize_array.norm_done () at asm/vector/stats_vector.asm:332
+332	    vzeroupper
+
+===== arreglo de salida DESPUES del bucle de normalizacion =====
+--- los 8 primeros, como pide el enunciado (x/8fw) ---
+0x55555555a480:	0.679065466	-0.540924668	0.987239599	0.400214761
+0x55555555a490:	-1.79595304	1.41331601	0.632402122	0.723150671
+
+--- los 16 completos ---
+0x55555555a480:	0.679065466	-0.540924668	0.987239599	0.400214761
+0x55555555a490:	-1.79595304	1.41331601	0.632402122	0.723150671
+0x55555555a4a0:	-1.6723938	-0.499026775	-0.788799882	1.23543036
+0x55555555a4b0:	0.205415055	0.856762588	-0.524410307	-1.31148756
+N        = 16
+Suma     = 279.829254
+Media    = 17.489328
+Varianza = 3017.436523
+StdDev   = 54.931198
+Minimo   = -81.164528
+Maximo   = 95.124474
+
+Repeticiones = 1  (mas 1 de calentamiento, no medida)
+fase                  ms (media)    ms (desv)  ciclos (media) ciclos (desv)
+sum_array               0.000171     0.000000         39360.0           0.0
+compute_stats           0.000128     0.000000           324.0           0.0
+normalize_array         0.000115     0.000000           290.0           0.0
+TOTAL                   0.000414     0.000000         39974.0           0.0
+
+Ciclos por elemento (total) = 2498.375
+[Inferior 1 (process 4419) exited normally]

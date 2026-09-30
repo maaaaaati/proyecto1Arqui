@@ -1,0 +1,30 @@
+N        = 1000000
+Suma     = -40599.167969
+Media    = -0.040599
+Varianza = 3330.019043
+StdDev   = 57.706318
+Minimo   = -99.999466
+Maximo   = 99.999817
+
+Repeticiones = 30  (mas 1 de calentamiento, no medida)
+fase                  ms (media)    ms (desv)  ciclos (media) ciclos (desv)
+sum_array               1.477929     0.092260       3693083.6      237863.3
+compute_stats           7.652633     0.286974      19112101.7      716704.6
+normalize_array         1.164584     0.087279       2908501.6      217974.6
+TOTAL                  10.295145     0.383193      25713686.9      961625.7
+
+Ciclos por elemento (total) = 25.714
+
+ Performance counter stats for './bin/norm_scalar data/perf.dat data/ps.dat 30':
+
+       942.964.534      cycles                                                                
+     1.164.969.800      instructions                                                          
+        22.406.701      cache-references                                                      
+        13.738.927      cache-misses                                                          
+
+       0,358714018 seconds time elapsed
+
+       0,339333000 seconds user
+       0,017067000 seconds sys
+
+

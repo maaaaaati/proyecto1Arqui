@@ -1,0 +1,30 @@
+N        = 50000000
+Suma     = 641711.875000
+Media    = 0.012834
+Varianza = 3333.225098
+StdDev   = 57.734089
+Minimo   = -100.000000
+Maximo   = 100.000000
+
+Repeticiones = 5  (mas 1 de calentamiento, no medida)
+fase                  ms (media)    ms (desv)  ciclos (media) ciclos (desv)
+sum_array              13.449490     1.462839      33578972.8     3640648.2
+compute_stats          54.048122     3.330708     134902404.8     8313349.2
+normalize_array        19.919154     1.616469      49717632.0     4034686.5
+TOTAL                  87.416765     5.551567     218199009.6    13843620.5
+
+Ciclos por elemento (total) = 4.364
+
+ Performance counter stats for './bin/norm_vector data/perfbig.dat data/pv.dat 5':
+
+     2.492.423.078      cycles                                                                
+     1.997.386.554      instructions                                                          
+       169.280.754      cache-references                                                      
+       110.251.127      cache-misses                                                          
+
+       1,228539114 seconds time elapsed
+
+       0,590714000 seconds user
+       0,349831000 seconds sys
+
+

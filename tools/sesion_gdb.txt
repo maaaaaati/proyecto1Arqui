@@ -1,0 +1,96 @@
+# =====================================================================
+#  Sesion de GDB exigida por la seccion 2.4.a.3 del enunciado
+#
+#  Uso:
+#     python3 tools/gen_input.py 16 data/n16.dat random 42
+#     gdb -x tools/sesion_gdb.txt --args ./bin/norm_vector \
+#         data/n16.dat data/o16.dat 1
+#
+#  Para guardar la transcripcion como evidencia del informe, agregue
+#  al final del comando:   2>&1 | tee evidencia/gdb_evidencia.txt
+#
+#  Los puntos de ruptura usan ETIQUETAS del ensamblador, no numeros de
+#  linea, para que el guion siga funcionando aunque se edite el .asm.
+#  GDB expone las etiquetas locales de NASM como funcion.etiqueta, sin
+#  el punto inicial: ".sum_vec_loop" dentro de sum_array se referencia
+#  como "sum_array.sum_vec_loop".
+# =====================================================================
+
+set pagination off
+set confirm off
+
+# ---------------------------------------------------------------------
+# PARTE 1: contenido de un registro YMM inmediatamente despues de un
+#          vaddps, en el bucle vectorial de sum_array.
+#
+# El bucle empieza asi:
+#     .sum_vec_loop:
+#         cmp     eax, ecx           <- aqui se detiene el breakpoint
+#         jge     .sum_reduce
+#         vmovups ymm1, [rdi + rax*4]
+#         vaddps  ymm0, ymm0, ymm1   <- aqui llegamos con stepi 3
+#
+# "stepi 3" ejecuta exactamente tres instrucciones maquina y deja el
+# contador de programa sobre el vaddps, todavia SIN ejecutarlo.
+# ---------------------------------------------------------------------
+break sum_array.sum_vec_loop
+run
+
+stepi 3
+echo \n===== ITERACION 1 (elementos 0-7): ANTES del vaddps =====\n
+echo --- instruccion que esta por ejecutarse ---\n
+x/i $pc
+echo --- ymm0 = acumulador, aun en cero ---\n
+p $ymm0.v8_float
+echo --- ymm1 = los 8 floats recien cargados de memoria ---\n
+p $ymm1.v8_float
+
+stepi
+echo \n===== ITERACION 1: DESPUES del vaddps =====\n
+p $ymm0.v8_float
+
+continue
+stepi 3
+echo \n===== ITERACION 2 (elementos 8-15): ANTES del vaddps =====\n
+p $ymm1.v8_float
+
+stepi
+echo \n===== ITERACION 2: DESPUES del vaddps =====\n
+echo --- el carril k contiene arr[k] + arr[k+8] ---\n
+p $ymm0.v8_float
+
+echo \n--- el mismo registro en hexadecimal ---\n
+p/x $ymm0.v8_int32
+echo \n--- volcado completo (funciona en cualquier version de GDB) ---\n
+info registers ymm0
+
+delete
+
+# ---------------------------------------------------------------------
+# PARTE 2: contenido de memoria del arreglo de salida en un punto de
+#          ruptura POSTERIOR al bucle de normalizacion.
+# ---------------------------------------------------------------------
+break normalize_array
+run
+echo \n===== argumentos segun la ABI System V AMD64 =====\n
+printf "rdi (puntero in)  = %p\n", $rdi
+printf "rsi (puntero out) = %p\n", $rsi
+printf "edx (n)           = %d\n", $edx
+echo --- xmm0 = mean, xmm1 = stddev (cola de flotantes, aparte) ---\n
+p $xmm0.v4_float[0]
+p $xmm1.v4_float[0]
+echo --- verificacion de alineacion: rsi debe ser multiplo de 32 ---\n
+printf "rsi mod 32 = %d\n", $rsi % 32
+
+delete
+break normalize_array.norm_done
+continue
+
+echo \n===== arreglo de salida DESPUES del bucle de normalizacion =====\n
+echo --- los 8 primeros, como pide el enunciado (x/8fw) ---\n
+x/8fw $rsi
+echo \n--- los 16 completos ---\n
+x/16fw $rsi
+
+delete
+continue
