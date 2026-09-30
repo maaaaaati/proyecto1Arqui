@@ -20,8 +20,13 @@ los tres kernels, el driver C, las herramientas de prueba y el benchmark.
 │       └── stats_vector.asm    # Version vectorial (AVX2)
 ├── tools/
 │   ├── gen_input.py            # Genera archivos de entrada de prueba
-│   └── verify_reference.py     # Verifica resultados contra referencia en Python puro
-└── data/                        # Se crea al compilar: entradas/salidas .dat
+│   ├── verify_reference.py     # Verifica estadisticos contra NumPy
+│   ├── verify_array.py         # Verifica el arreglo normalizado
+│   ├── run_tests.py            # Ejecuta los casos borde
+│   └── benchmark.py             # Ejecuta las mediciones de rendimiento
+├── evidencia/                  # Evidencia de GDB, lscpu, cache y perf
+├── Informe/                    # Informe tecnico, PDF, bibliografia y figuras
+└── data/                       # Entradas, salidas y resultados generados
 ```
 
 ## Requisitos
@@ -30,6 +35,8 @@ los tres kernels, el driver C, las herramientas de prueba y el benchmark.
 - `nasm`, `gcc`, `make`, `python3`.
 - `gdb` y, opcionalmente, `perf` (paquete `linux-tools`) para las partes
   de verificacion y medicion de rendimiento del proyecto.
+- `python3-numpy` para la referencia numerica de los verificadores y
+   `python3-matplotlib` para generar el grafico del benchmark.
 
 ## Compilar
 
@@ -84,12 +91,15 @@ python3 tools/verify_reference.py data/input.dat data/output_vector.dat.stats.tx
    iteracion con AVX2 (`vmovaps`/`vmovups`, `vaddps`, `vsubps`, `vmulps`,
    `vdivps`, `vminps`, `vmaxps`) y maneja el remanente con un bucle
    escalar.
-3. En ambas versiones, la suma, la media y la varianza se calculan en
-   `float32`, como exige el enunciado. La suma de cuadrados usa compensacion
-   de Kahan para reducir el error de acumulacion. La referencia de NumPy usa
-   `float64` de forma independiente para comparar los resultados.
+3. Todo el calculo del kernel se realiza en `float32`, como exige el
+   enunciado. La suma de cuadrados usa compensacion de Kahan para reducir
+   el error de acumulacion; la referencia de NumPy usa `float64` de forma
+   independiente para comparar los resultados.
 4. Los arreglos del driver estan alineados a 32 bytes y el camino AVX2
-   usa `vmovaps` para las cargas y stores principales.
+   usa `vmovaps` para las cargas y stores principales. La normalizacion
+   vectorial calcula un reciproco de la desviacion una sola vez y usa
+   almacenamiento no temporal para reducir trafico de cache cuando el
+   arreglo supera el umbral de trabajo definido en el kernel.
 
 ## Notas de depuracion con GDB
 
@@ -248,6 +258,7 @@ Casos: N = 0, 1, 7, 8, 15, 16, 1000 y 100000 en `random`; 1000 en
 python3 tools/benchmark.py            # 4 tamaños, 30 repeticiones
 python3 tools/benchmark.py --rapido   # omite N = 5×10⁷
 python3 tools/benchmark.py --reps 50
+python3 tools/benchmark.py --mantener # conserva los .dat grandes generados
 ```
 
 Genera `data/benchmark.csv` y `data/speedup.png` (eje X logarítmico, con
@@ -289,9 +300,10 @@ La compilacion, los casos borde y la comparacion entre versiones pasan:
 RESULTADO GLOBAL: TODO PASA
 ```
 
-Los kernels actuales acumulan en `float32`; la suma de cuadrados usa
-compensacion de Kahan. La compilacion y los casos borde hasta `N = 100000`
-pasaron. En `N = 1000000` y `N = 50000000`, ambas versiones pasaron
+Los kernels actuales acumulan la media y la varianza en `double` antes de
+convertir los resultados a `float`; la suma de cuadrados usa compensacion de
+Kahan. La compilacion y los casos borde hasta `N = 100000` pasaron. En
+`N = 1000000` y `N = 50000000`, ambas versiones pasaron
 `verify_reference.py` y `verify_array.py`; para `N = 50000000`, la varianza
 obtenida fue `3333.2251` frente a la referencia `3333.22512`.
 
@@ -311,3 +323,19 @@ Esos resultados son provisionales y deben repetirse antes de considerarlos
 estables. El speedup menor para `N = 50000000` es consistente con el impacto
 del ancho de banda de memoria; esa medicion tambien tiene variabilidad alta
 en la version escalar.
+
+## Evidencia de rendimiento y depuracion
+
+El directorio `evidencia/` contiene las capturas usadas para el informe:
+
+- `evidencia_lscpu.txt`: informacion de CPU y confirmacion de AVX2.
+- `evidencia_cache.txt`: tamanos de cache relevantes para interpretar los
+   cambios de rendimiento.
+- `gdb_evidencia.txt`: sesion de GDB con registros YMM y recorrido de los
+   bloques vectoriales para `N = 16`.
+- `perf_scalar_*.txt` y `perf_vector_*.txt`: mediciones con `perf stat` para
+   `N = 10^6` y `N = 5x10^7`, incluyendo una corrida con 20 repeticiones.
+
+La sesion reproducible de GDB esta documentada en `tools/sesion_gdb.txt`.
+El benchmark genera `data/benchmark.csv` y `data/speedup.png` cuando
+matplotlib esta instalado.

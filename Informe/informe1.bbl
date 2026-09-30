@@ -1,0 +1,155 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.2 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{none/global//global/global}
+    \entry{sysv_abi}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=82d6e87f7027c222447e8c2426406430}{%
+           family={{x86-64 psABI Project}},
+           familyi={x\bibinitperiod}}}%
+      }
+      \strng{namehash}{82d6e87f7027c222447e8c2426406430}
+      \strng{fullhash}{82d6e87f7027c222447e8c2426406430}
+      \strng{bibnamehash}{82d6e87f7027c222447e8c2426406430}
+      \strng{authorbibnamehash}{82d6e87f7027c222447e8c2426406430}
+      \strng{authornamehash}{82d6e87f7027c222447e8c2426406430}
+      \strng{authorfullhash}{82d6e87f7027c222447e8c2426406430}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{System V Application Binary Interface: AMD64 Architecture Processor Supplement}
+      \field{year}{2018}
+      \verb{urlraw}
+      \verb https://gitlab.com/x86-psABIs/x86-64-ABI
+      \endverb
+      \verb{url}
+      \verb https://gitlab.com/x86-psABIs/x86-64-ABI
+      \endverb
+    \endentry
+    \entry{agner_tables}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=864397b9221451835222ebd442c17e09}{%
+           family={Fog},
+           familyi={F\bibinitperiod},
+           given={Agner},
+           giveni={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{864397b9221451835222ebd442c17e09}
+      \strng{fullhash}{864397b9221451835222ebd442c17e09}
+      \strng{bibnamehash}{864397b9221451835222ebd442c17e09}
+      \strng{authorbibnamehash}{864397b9221451835222ebd442c17e09}
+      \strng{authornamehash}{864397b9221451835222ebd442c17e09}
+      \strng{authorfullhash}{864397b9221451835222ebd442c17e09}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Instruction Tables: Lists of Instruction Latencies, Throughputs and Micro-operation Breakdowns}
+      \field{year}{2025}
+      \verb{urlraw}
+      \verb https://www.agner.org/optimize/instruction_tables.pdf
+      \endverb
+      \verb{url}
+      \verb https://www.agner.org/optimize/instruction_tables.pdf
+      \endverb
+    \endentry
+    \entry{intel_optimization}{manual}{}
+      \name{author}{1}{}{%
+        {{hash=b7f0fb90e404efb48f8a85a517dec3c9}{%
+           family={{Intel Corporation}},
+           familyi={I\bibinitperiod}}}%
+      }
+      \strng{namehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{fullhash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{bibnamehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{authorbibnamehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{authornamehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{authorfullhash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \field{sortinit}{3}
+      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{number}{248966-040US}
+      \field{title}{Intel 64 and IA-32 Architectures Optimization Reference Manual}
+      \field{year}{2024}
+    \endentry
+    \entry{goldberg1991}{article}{}
+      \name{author}{1}{}{%
+        {{hash=d55a57c88a14828a53b9e8db48c889d1}{%
+           family={Goldberg},
+           familyi={G\bibinitperiod},
+           given={David},
+           giveni={D\bibinitperiod}}}%
+      }
+      \strng{namehash}{d55a57c88a14828a53b9e8db48c889d1}
+      \strng{fullhash}{d55a57c88a14828a53b9e8db48c889d1}
+      \strng{bibnamehash}{d55a57c88a14828a53b9e8db48c889d1}
+      \strng{authorbibnamehash}{d55a57c88a14828a53b9e8db48c889d1}
+      \strng{authornamehash}{d55a57c88a14828a53b9e8db48c889d1}
+      \strng{authorfullhash}{d55a57c88a14828a53b9e8db48c889d1}
+      \field{sortinit}{5}
+      \field{sortinithash}{20e9b4b0b173788c5dace24730f47d8c}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{ACM Computing Surveys}
+      \field{number}{1}
+      \field{title}{What Every Computer Scientist Should Know About Floating-Point Arithmetic}
+      \field{volume}{23}
+      \field{year}{1991}
+      \field{pages}{5\bibrangedash 48}
+      \range{pages}{44}
+      \verb{doi}
+      \verb 10.1145/103162.103163
+      \endverb
+    \endentry
+    \entry{higham2002}{book}{}
+      \name{author}{1}{}{%
+        {{hash=5bec9d02065c9b35d45c881a24f7a1cd}{%
+           family={Higham},
+           familyi={H\bibinitperiod},
+           given={Nicholas\bibnamedelima J.},
+           giveni={N\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
+      }
+      \list{publisher}{2}{%
+        {Society for Industrial}%
+        {Applied Mathematics}%
+      }
+      \strng{namehash}{5bec9d02065c9b35d45c881a24f7a1cd}
+      \strng{fullhash}{5bec9d02065c9b35d45c881a24f7a1cd}
+      \strng{bibnamehash}{5bec9d02065c9b35d45c881a24f7a1cd}
+      \strng{authorbibnamehash}{5bec9d02065c9b35d45c881a24f7a1cd}
+      \strng{authornamehash}{5bec9d02065c9b35d45c881a24f7a1cd}
+      \strng{authorfullhash}{5bec9d02065c9b35d45c881a24f7a1cd}
+      \field{sortinit}{6}
+      \field{sortinithash}{b33bc299efb3c36abec520a4c896a66d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{edition}{2}
+      \field{title}{Accuracy and Stability of Numerical Algorithms}
+      \field{year}{2002}
+      \verb{doi}
+      \verb 10.1137/1.9780898718027
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

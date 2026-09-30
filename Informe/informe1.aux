@@ -1,0 +1,133 @@
+\relax 
+\providecommand\babel@aux[2]{}
+\@nameuse{bbl@beforestart}
+\catcode `"\active 
+\catcode `<\active 
+\catcode `>\active 
+\@nameuse{es@quoting}
+\abx@aux@refcontext{none/global//global/global}
+\babel@aux{spanish}{}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introducción y Objetivos}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {II}Entorno de Pruebas}{1}{}\protected@file@percent }
+\newlabel{sec:entorno}{{II}{1}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Entorno de desarrollo y medición.}}{1}{}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{tab:entorno}{{1}{1}{}{}{}}
+\abx@aux@cite{0}{sysv_abi}
+\abx@aux@segm{0}{0}{sysv_abi}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {1}{\ignorespaces Verificación del soporte de AVX2.}}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Opciones de compilación}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Protección de pila no ejecutable}{2}{}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {2}{\ignorespaces Declaración explícita de pila no ejecutable.}}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {III}Diagramas de Arquitectura}{2}{}\protected@file@percent }
+\newlabel{sec:diagramas}{{III}{2}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Contenido del archivo de diagramas.}}{2}{}\protected@file@percent }
+\newlabel{tab:diagramas}{{2}{2}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Implementación Escalar}{2}{}\protected@file@percent }
+\newlabel{sec:escalar}{{IV}{2}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Convención de llamada}{2}{}\protected@file@percent }
+\newlabel{lst:prologo-esc}{{3}{2}{}{}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {3}{\ignorespaces Prólogo escalar de \texttt  {compute\_stats}: siete \texttt  {push}.}}{2}{}\protected@file@percent }
+\newlabel{lst:prologo}{{4}{2}{}{}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {4}{\ignorespaces Prólogo de \texttt  {compute\_stats}: cinco registros preservados y el sexto argumento en la pila.}}{2}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Mapa de memoria (página 6 de \texttt  {Diagramas\_P1\_Arquitectura.pdf}).}}{3}{}\protected@file@percent }
+\newlabel{fig:memoria}{{1}{3}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Cálculo de estadísticos: dos pasadas}{3}{}\protected@file@percent }
+\newlabel{lst:esc-var}{{5}{3}{}{}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {5}{\ignorespaces Bucle de varianza con mínimo y máximo fusionados y suma compensada de Kahan.}}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Normalización}{4}{}\protected@file@percent }
+\newlabel{lst:esc-norm}{{6}{4}{}{}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {6}{\ignorespaces Decisión de ruta según \texttt  {stddev}, evaluada fuera del bucle.}}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {V}Implementación Vectorial (AVX2)}{4}{}\protected@file@percent }
+\newlabel{sec:vectorial}{{V}{4}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Elección de AVX2 frente a SSE y AVX-512}{4}{}\protected@file@percent }
+\newlabel{sec:eleccion}{{\mbox  {V-A}}{4}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Marco de pila y alineación}{4}{}\protected@file@percent }
+\newlabel{lst:prologo-vec}{{7}{4}{}{}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {7}{\ignorespaces Prólogo vectorial de \texttt  {compute\_stats}: cinco \texttt  {push} y \texttt  {max*} en la pila.}}{4}{}\protected@file@percent }
+\abx@aux@cite{0}{agner_tables}
+\abx@aux@segm{0}{0}{agner_tables}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Bucle principal}{5}{}\protected@file@percent }
+\newlabel{lst:vec-loop}{{8}{5}{}{}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {8}{\ignorespaces Núcleo vectorizado: ocho elementos por iteración con tres acumuladores en paralelo.}}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Reducción horizontal}{5}{}\protected@file@percent }
+\newlabel{lst:reduccion}{{9}{5}{}{}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {9}{\ignorespaces Reducción horizontal de los ocho carriles a un escalar.}}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-E}}Manejo del remanente}{5}{}\protected@file@percent }
+\newlabel{lst:remanente}{{10}{5}{}{}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {10}{\ignorespaces Bucle de cierre para los elementos sobrantes.}}{5}{}\protected@file@percent }
+\abx@aux@cite{0}{intel_optimization}
+\abx@aux@segm{0}{0}{intel_optimization}
+\abx@aux@cite{0}{agner_tables}
+\abx@aux@segm{0}{0}{agner_tables}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-F}}Transición AVX--SSE}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-G}}Optimización de \texttt  {normalize\_array}}{6}{}\protected@file@percent }
+\newlabel{sec:optimizacion}{{\mbox  {V-G}}{6}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Aceleración de \texttt  {normalize\_array} según la optimización aplicada.}}{6}{}\protected@file@percent }
+\newlabel{tab:optimizacion}{{3}{6}{}{}{}}
+\newlabel{lst:nt}{{11}{6}{}{}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {11}{\ignorespaces Selección del camino de escritura según el tamaño del arreglo.}}{6}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Calibración empírica del umbral (200 repeticiones).}}{6}{}\protected@file@percent }
+\newlabel{tab:calibracion}{{4}{6}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Casos de Prueba}{6}{}\protected@file@percent }
+\newlabel{sec:casos}{{VI}{6}{}{}{}}
+\newlabel{eq:criterio}{{1}{6}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VII}Resultados de Rendimiento}{7}{}\protected@file@percent }
+\newlabel{sec:rendimiento}{{VII}{7}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VII-A}}Metodología de medición}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VII-B}}Tiempos y \textit  {speedup}}{7}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces \textit  {Speedup} de la versión AVX2 frente a la escalar en función de $N$ (eje horizontal logarítmico). La línea punteada marca el límite teórico de $8\times $ que impone el ancho de los registros YMM.}}{7}{}\protected@file@percent }
+\newlabel{fig:speedup}{{2}{7}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VII-C}}Ciclos por elemento}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VII-D}}Contadores de hardware}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VII-E}}Discusión: cómputo o ancho de banda}{7}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Casos borde exigidos por la sección 2.3 del enunciado. Todos verificados contra la referencia en NumPy y entre ambas versiones.}}{8}{}\protected@file@percent }
+\newlabel{tab:casos}{{5}{8}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Detalle numérico del caso $N = 1000$, entrada aleatoria con semilla 42, versión escalar.}}{8}{}\protected@file@percent }
+\newlabel{tab:detalle1000}{{6}{8}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Tiempo del kernel completo, promedio $\pm $ desviación estándar muestral.}}{8}{}\protected@file@percent }
+\newlabel{tab:tiempos}{{7}{8}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces \textit  {Speedup} por fase del kernel.}}{8}{}\protected@file@percent }
+\newlabel{tab:fases}{{8}{8}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Ciclos de referencia (TSC) por elemento procesado.}}{8}{}\protected@file@percent }
+\newlabel{tab:ciclos}{{9}{8}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VIII}Verificación con GDB}{8}{}\protected@file@percent }
+\newlabel{sec:gdb}{{VIII}{8}{}{}{}}
+\abx@aux@cite{0}{goldberg1991}
+\abx@aux@segm{0}{0}{goldberg1991}
+\abx@aux@cite{0}{higham2002}
+\abx@aux@segm{0}{0}{higham2002}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Contadores de hardware, $N = 10^6$, 30 repeticiones.}}{9}{}\protected@file@percent }
+\newlabel{tab:perf1e6}{{10}{9}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Contadores de hardware, $N = 5\times 10^7$, 20 repeticiones.}}{9}{}\protected@file@percent }
+\newlabel{tab:perf5e7}{{11}{9}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VIII-A}}Inspección del registro YMM}{9}{}\protected@file@percent }
+\newlabel{lst:gdb-ymm}{{12}{9}{}{}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {12}{\ignorespaces Contenido de \texttt  {ymm0} antes y después del \texttt  {vaddps}.}}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VIII-B}}Inspección de memoria y de la ABI}{9}{}\protected@file@percent }
+\newlabel{lst:gdb-mem}{{13}{9}{}{}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {13}{\ignorespaces Argumentos recibidos y arreglo de salida tras el bucle de normalización.}}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {IX}Precisión Numérica}{9}{}\protected@file@percent }
+\newlabel{sec:precision}{{IX}{9}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IX-A}}Cancelación catastrófica en una sola pasada}{9}{}\protected@file@percent }
+\newlabel{sec:cancelacion}{{\mbox  {IX-A}}{9}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Varianza de $10^3$ valores alrededor de $10^6$ con dispersión $\pm 1$.}}{9}{}\protected@file@percent }
+\newlabel{tab:cancelacion}{{12}{9}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IX-B}}Error de acumulación secuencial}{10}{}\protected@file@percent }
+\newlabel{sec:acumulacion}{{\mbox  {IX-B}}{10}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IX-C}}Mitigaciones evaluadas}{10}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces Error relativo de la varianza según la estrategia de acumulación.}}{10}{}\protected@file@percent }
+\newlabel{tab:kahan}{{13}{10}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IX-D}}Interacción entre FMA y la compensación de Kahan}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IX-E}}Alcance de la compensación}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {X}Conclusiones y Trabajo Futuro}{10}{}\protected@file@percent }
+\newlabel{sec:conclusiones}{{X}{10}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {X-A}}Limitaciones observadas}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {X-B}}Trabajo futuro}{11}{}\protected@file@percent }
+\abx@aux@read@bbl@mdfivesum{ED6C393B43EF1DD1741D729DB086DBE1}
+\abx@aux@defaultrefcontext{0}{sysv_abi}{none/global//global/global}
+\abx@aux@defaultrefcontext{0}{agner_tables}{none/global//global/global}
+\abx@aux@defaultrefcontext{0}{intel_optimization}{none/global//global/global}
+\abx@aux@defaultrefcontext{0}{goldberg1991}{none/global//global/global}
+\abx@aux@defaultrefcontext{0}{higham2002}{none/global//global/global}
+\gdef \@abspage@last{11}
